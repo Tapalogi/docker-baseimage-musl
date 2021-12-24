@@ -1,0 +1,34 @@
+name: On Release
+
+on:
+  release:
+    types: [published]
+
+env:
+  IMAGE_NAME: ghcr.io/tapalogi/docker-baseimage-musl
+  DOCKER_BUILDKIT: 1
+
+jobs:
+  docker-publish-stable:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build & Publish
+        run: |
+
+          # Build Image
+          docker build --pull -f Dockerfile -t docker-image .
+
+          # Login Github Docker Registry
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # Github Package Registry Tag & Push
+          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+          echo IMAGE_NAME=$IMAGE_NAME
+          echo VERSION=$VERSION
+          docker tag docker-image $IMAGE_NAME:$VERSION
+          docker push $IMAGE_NAME:$VERSION
+          VERSION=latest
+          docker tag docker-image $IMAGE_NAME:$VERSION
+          docker push $IMAGE_NAME:$VERSION
